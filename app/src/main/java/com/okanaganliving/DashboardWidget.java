@@ -19,7 +19,7 @@ import org.json.JSONObject;
 
 public class DashboardWidget extends AppWidgetProvider {
  static final String REFRESH="com.okanaganliving.REFRESH";
- static final int W=900,H=1100;static final int WHITE=0xfff4f7ff,MUTED=0xffa2b0c5,GOLD=0xffd7c19c,BLUE=0xff8daed0;
+ static final int W=450,H=550;static final int WHITE=0xfff4f7ff,MUTED=0xffa2b0c5,GOLD=0xffd7c19c,BLUE=0xff8daed0;
  static final SimpleDateFormat TIME=new SimpleDateFormat("h:mm",Locale.CANADA);
  static final SimpleDateFormat DATE=new SimpleDateFormat("EEEE, MMMM d",Locale.CANADA);
  static final SimpleDateFormat MONTH=new SimpleDateFormat("MMMM yyyy",Locale.CANADA);
@@ -61,8 +61,8 @@ public class DashboardWidget extends AppWidgetProvider {
   void ring(float x,float y,float r,int pct,int color){p.setShader(null);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(12);p.setStrokeCap(Paint.Cap.ROUND);p.setColor(0xff354353);c.drawArc(x-r,y-r,x+r,y+r,-90,360,false,p);p.setColor(color);c.drawArc(x-r,y-r,x+r,y+r,-90,Math.max(0,Math.min(100,pct))*3.6f,false,p);p.setStyle(Paint.Style.FILL);}
  }
  static Bitmap paint(Context ctx,Weather weather){
-  Bitmap b=Bitmap.createBitmap(W,H,Bitmap.Config.ARGB_8888);Canvas c=new Canvas(b);Art a=new Art(c);
-  a.rect(0,0,W,H,0xff09121e,52);
+  Bitmap b=Bitmap.createBitmap(W,H,Bitmap.Config.ARGB_8888);Canvas c=new Canvas(b);c.scale(.5f,.5f);Art a=new Art(c);
+  a.rect(0,0,900,1100,0xff09121e,52);
   a.rect(22,22,856,215,0xff172335,40);
   a.text("O K A N A G A N   L I V I N G",55,75,21,GOLD,true);
   a.text("KELOWNA  /  BRITISH COLUMBIA",55,112,18,MUTED,false);
