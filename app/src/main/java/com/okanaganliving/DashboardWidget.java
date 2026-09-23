@@ -10,6 +10,9 @@ import android.database.Cursor;
 import android.graphics.*;
 import android.os.BatteryManager;
 import android.provider.CalendarContract;
+import android.provider.Settings;
+import android.net.Uri;
+import android.graphics.drawable.*;
 import android.widget.RemoteViews;
 import java.net.*;
 import java.io.*;
@@ -42,6 +45,7 @@ public class DashboardWidget extends AppWidgetProvider {
   out.ready=prefs.contains("updated");out.temp=prefs.getInt("temp",0);out.label=prefs.getString("label","Weather unavailable");
   return out;
  }
+ static long nextEventId(Context c){if(c.checkSelfPermission(Manifest.permission.READ_CALENDAR)!=PackageManager.PERMISSION_GRANTED)return -1;long now=System.currentTimeMillis();Uri.Builder b=CalendarContract.Instances.CONTENT_URI.buildUpon();ContentUris.appendId(b,now);ContentUris.appendId(b,now+7L*86400000L);try(Cursor cur=c.getContentResolver().query(b.build(),new String[]{CalendarContract.Instances.EVENT_ID},null,null,CalendarContract.Instances.BEGIN+" ASC")){if(cur!=null&&cur.moveToFirst())return cur.getLong(0);}catch(Exception ignored){}return -1;}
  static String nextEvent(Context c){
   if(c.checkSelfPermission(Manifest.permission.READ_CALENDAR)!=PackageManager.PERMISSION_GRANTED)return "Allow calendar in app";
   long now=System.currentTimeMillis();String[] columns={CalendarContract.Instances.TITLE,CalendarContract.Instances.BEGIN};
@@ -68,10 +72,11 @@ public class DashboardWidget extends AppWidgetProvider {
   a.text("KELOWNA  /  BRITISH COLUMBIA",55,112,18,MUTED,false);
   a.text(weather.ready?weather.temp+"°":"—",52,201,90,WHITE,false);
   a.text(weather.label,255,177,29,WHITE,false);
-  a.text("LOCAL WEATHER",255,207,18,MUTED,false);
+  a.text("LOCAL WEATHER  ·  FORECAST ↗",255,207,18,MUTED,false);
+  a.text("◌",750,175,68,GOLD,false);
   Calendar cal=Calendar.getInstance();Date date=cal.getTime();
   a.rect(22,254,856,345,0xff141f2e,40);
-  a.text(MONTH.format(date).toUpperCase(Locale.CANADA),55,306,26,GOLD,true);
+  a.text(MONTH.format(date).toUpperCase(Locale.CANADA),55,306,26,GOLD,true);a.text("↗",808,307,32,GOLD,false);
   String[] weekdays={"S","M","T","W","T","F","S"};
   for(int j=0;j<7;j++)a.text(weekdays[j],67+j*115,351,21,MUTED,true);
   Calendar first=(Calendar)cal.clone();first.set(Calendar.DAY_OF_MONTH,1);int start=first.get(Calendar.DAY_OF_WEEK)-1;int count=cal.getActualMaximum(Calendar.DAY_OF_MONTH);
@@ -79,20 +84,35 @@ public class DashboardWidget extends AppWidgetProvider {
    if(d==cal.get(Calendar.DAY_OF_MONTH))a.rect(x-14,y-26,54,34,0xffb7cbe0,15);
    a.text(""+d,x,y,22,d==cal.get(Calendar.DAY_OF_MONTH)?0xff0b1421:WHITE,d==cal.get(Calendar.DAY_OF_MONTH));}
   a.rect(22,615,410,235,0xff172335,40);a.rect(449,615,429,235,0xff172335,40);
-  a.text("LOCAL TIME",53,668,20,MUTED,true);a.text(TIME.format(date),53,743,68,WHITE,false);a.text(DATE.format(date),53,792,23,GOLD,false);
-  int charge=battery(ctx);a.text("DEVICE",477,668,20,MUTED,true);a.ring(553,754,48,charge,0xff92d6ba);a.text(charge+"%",510,766,31,WHITE,true);
-  a.text("STORAGE",650,728,19,MUTED,true);a.text(storage(),650,766,22,WHITE,false);
-  a.rect(22,868,856,207,0xff172335,40);a.text("NEXT ON YOUR CALENDAR",55,925,21,GOLD,true);
+  a.text("LOCAL TIME  ↗",53,668,20,MUTED,true);a.text(TIME.format(date),53,743,68,WHITE,false);a.text(DATE.format(date),53,792,23,GOLD,false);
+  int charge=battery(ctx);a.text("DEVICE",477,668,20,MUTED,true);a.rect(500,711,78,41,0xff344759,9);a.rect(580,723,7,17,0xff93d8b5,3);a.rect(506,717,Math.max(4,66*charge/100),29,0xff93d8b5,5);a.text(charge+"%",504,800,32,WHITE,true);
+  a.text("STORAGE ↗",650,728,19,MUTED,true);a.text(storage(),650,766,22,WHITE,false);
+  a.rect(22,868,856,207,0xff172335,40);a.text("NEXT ON YOUR CALENDAR  ↗",55,925,21,GOLD,true);
   String event=nextEvent(ctx);if(event.length()>39)event=event.substring(0,38)+"…";a.text(event,55,980,28,WHITE,false);
-  a.line(55,1008,845,1008,0xff354457,2);a.text("TAP TO OPEN  ·  REFRESH WEATHER IN APP",55,1044,17,MUTED,false);
+  a.line(55,1008,845,1008,0xff354457,2);a.text("OKANAGAN  /  SIGNATURE",55,1044,17,MUTED,false);a.text("↻",808,73,34,GOLD,true);
   return b;
  }
  static void update(Context c,AppWidgetManager mgr,int id,Weather w){
   RemoteViews views=new RemoteViews(c.getPackageName(),R.layout.dashboard_widget);
   views.setImageViewBitmap(R.id.dashboard_image,paint(c,w));
-  Intent open=new Intent(c,MainActivity.class);
-  PendingIntent pi=PendingIntent.getActivity(c,id,open,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
-  views.setOnClickPendingIntent(R.id.open_dashboard,pi);mgr.updateAppWidget(id,views);
+  Intent weather=new Intent(Intent.ACTION_VIEW,Uri.parse("https://www.google.com/search?q=Kelowna+weather"));
+  Intent calendar=new Intent(Intent.ACTION_VIEW,CalendarContract.CONTENT_URI);
+  Intent clock=new Intent("android.intent.action.SHOW_ALARMS");
+  Intent battery=new Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS);
+  Intent storage=new Intent(Settings.ACTION_INTERNAL_STORAGE_SETTINGS);
+  long eventId=nextEventId(c);
+  Intent event=eventId>0?new Intent(Intent.ACTION_VIEW,ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI,eventId)):calendar;
+  Intent[] actions={weather,calendar,clock,battery,storage,event};
+  int[] targets={R.id.weather_tap,R.id.calendar_tap,R.id.clock_tap,R.id.battery_tap,R.id.storage_tap,R.id.event_tap};
+  for(int n=0;n<targets.length;n++){
+   actions[n].addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+   PendingIntent pi=PendingIntent.getActivity(c,id*20+n,actions[n],PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
+   views.setOnClickPendingIntent(targets[n],pi);
+  }
+  Intent refresh=new Intent(c,DashboardWidget.class).setAction(REFRESH);
+  PendingIntent refreshPi=PendingIntent.getBroadcast(c,id*20+10,refresh,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
+  views.setOnClickPendingIntent(R.id.refresh_tap,refreshPi);
+  mgr.updateAppWidget(id,views);
  }
  static void refresh(Context c,boolean force){
   new Thread(()->{Weather w=weather(c,force);AppWidgetManager mgr=AppWidgetManager.getInstance(c);
